@@ -1,0 +1,85 @@
+body {
+    background: #f7f7f7;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+    margin-top: 40px;
+    margin-bottom: 30px;
+    font-size: 2.5em;
+    color: #222;
+    letter-spacing: 2px;
+}
+
+.lathe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 10px;
+    justify-items: center;
+}
+
+.lathe-btn {
+    background: #1976d2;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 24px 0;
+    width: 160px;
+    font-size: 1.15em;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: background 0.2s, transform 0.2s;
+}
+
+.lathe-btn:hover, .lathe-btn:focus {
+    background: #125ea2;
+    transform: translateY(-2px) scale(1.04);
+    outline: none;
+}
+
+@media (max-width: 600px) {
+    h1 {
+        font-size: 1.5em;
+    }
+    .lathe-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        padding: 10px 2px;
+    }
+    .lathe-btn {
+        width: 100px;
+        padding: 14px 0;
+        font-size: 1em;
+    }
+}
+
+.status-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-left: 10px;
+    vertical-align: middle;
+    border: 2px solid #fff;
+    box-shadow: 0 0 2px #888;
+}
+.status-dot.on {
+    background: #2ecc40; /* Green */
+}
+.status-dot.off {
+    background: #ff4136; /* Red */
+}
+.dashboard-summary {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    font-size: 1.2em;
+}

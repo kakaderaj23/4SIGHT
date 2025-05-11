@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lathe Machine Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    </head>
+<body>
+    <h1 style="text-align:center;">Lathe Machines Dashboard</h1>
+
+    <div class="dashboard-summary">
+        <div>Total Lathes: <strong>{{ total_lathes }}</strong></div>
+        <div>Machines On: <strong style="color:#2ecc40">{{ on_count }}</strong></div>
+        <div>Machines Off: <strong style="color:#ff4136">{{ off_count }}</strong></div>
+    </div>
+
+    <div class="lathe-grid">
+        {% for lathe in lathe_statuses %}
+            <a href="{{ url_for('lathe_detail', lathe_id=lathe.id) }}">
+                <button class="lathe-btn">
+                    Lathe {{ lathe.id }}
+                    <span class="status-dot {% if lathe.is_on %}on{% else %}off{% endif %}"></span>
+                </button>
+            </a>
+        {% endfor %}
+    </div>
+</body>
+</html>

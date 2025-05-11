@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Current Status - Lathe {{ lathe_id }}</h1>
+<div class="status-box">
+    {% if current_job %}
+        <p><strong>Job ID:</strong> {{ current_job.JobID }}</p>
+        <p><strong>Operator:</strong> {{ current_job.OperatorName }}</p>
+        <p><strong>Temperature:</strong> {{ sensor_data.Temperature|round(1) }}°C</p>
+        <p><strong>Vibration:</strong> {{ sensor_data.Vibration|round(2) }} mm/s²</p>
+    {% else %}
+        <p>Lathe is currently idle</p>
+    {% endif %}
+</div>
+{% endblock %}

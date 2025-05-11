@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Job History - Lathe {{ lathe_id }}</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Job ID</th>
+            <th>Start Time</th>
+            <th>Operator</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs %}
+        <tr>
+            <td>{{ job.JobID }}</td>
+            <td>{{ job.StartTime.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ job.OperatorName }}</td>
+            <td>{{ job.Status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

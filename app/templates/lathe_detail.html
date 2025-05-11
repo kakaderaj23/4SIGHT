@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lathe {{ lathe_id }} Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lathe.css') }}">
+</head>
+<body>
+    <div class="control-panel">
+        <h2>Lathe {{ lathe_id }} Controls</h2>
+        
+        <div class="button-group">
+            <a href="{{ url_for('start_simulator', lathe_id=lathe_id) }}" class="btn">Start Simulator</a>
+            <a href="{{ url_for('job_history', lathe_id=lathe_id) }}" class="btn">Job History</a>
+            <a href="{{ url_for('alert_history', lathe_id=lathe_id) }}" class="btn">Alert History</a>
+            <a href="{{ url_for('add_alert', lathe_id=lathe_id) }}" 
+   class="btn" 
+   target="_blank"
+   onclick="window.open(this.href, 'Alert Window', 'width=500,height=400'); return false;">
+   Add Alert
+</a>
+
+        </div>
+
+        
+
+        <!-- Current Status Display -->
+        <div class="status-overview">
+            <h3>Current Status</h3>
+            {% if current_job %}
+                <p><strong>Job ID:</strong> {{ current_job.JobID }}</p>
+                <p><strong>Status:</strong> {{ current_job.Status }}</p>
+                <p><strong>Temperature:</strong> {{ sensor_data.Temperature|round(1) }}°C</p>
+                <p><strong>Vibration:</strong> {{ sensor_data.Vibration|round(2) }} mm/s²</p>
+            {% else %}
+                <p>Lathe is currently idle</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

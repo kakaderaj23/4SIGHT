@@ -1,0 +1,108 @@
+body {
+    background: #f7f8fa;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.form-container {
+    background: #fff;
+    max-width: 500px;
+    margin: 40px auto 0 auto;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.09);
+    padding: 32px 28px 24px 28px;
+}
+
+.form-container h1 {
+    text-align: center;
+    margin-bottom: 28px;
+    color: #1976d2;
+    font-size: 2em;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 500;
+    color: #333;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="float"],
+select,
+textarea {
+    width: 100%;
+    padding: 12px 10px;
+    border: 1.5px solid #bfc7d1;
+    border-radius: 5px;
+    font-size: 1em;
+    background: #f4f7fa;
+    color: #222;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+    outline: none;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="float"]:focus,
+select:focus,
+textarea:focus {
+    border-color: #1976d2;
+    background: #eaf1fb;
+}
+
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,<svg width='16' height='16' fill='gray' xmlns='http://www.w3.org/2000/svg'><path d='M4 6l4 4 4-4'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px 16px;
+}
+
+button, .btn, input[type="submit"] {
+    background: #1976d2;
+    color: #fff;
+    border: none;
+    padding: 13px 0;
+    width: 100%;
+    border-radius: 5px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 8px;
+}
+
+button:hover, .btn:hover, input[type="submit"]:hover {
+    background: #125ea2;
+    transform: translateY(-2px) scale(1.02);
+}
+
+#custom-material-group {
+    display: none;
+    margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+    .form-container {
+        padding: 18px 6px 12px 6px;
+        max-width: 98vw;
+    }
+    .form-container h1 {
+        font-size: 1.3em;
+    }
+    label {
+        font-size: 0.96em;
+    }
+}

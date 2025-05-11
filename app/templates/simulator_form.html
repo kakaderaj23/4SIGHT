@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Start Simulator - Lathe {{ lathe_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='simulator_form.css') }}">
+
+</head>
+<body>
+    <div class="form-container">
+        <h1>Start New Job - Lathe {{ lathe_id }}</h1>
+        <form method="POST">
+            {{ form.csrf_token }}
+            
+            <div class="form-group">
+                {{ form.job_type.label }}
+                {{ form.job_type(class="form-control") }}
+            </div>
+            
+            <div class="form-group">
+                {{ form.job_description.label }}
+                {{ form.job_description(class="form-control") }}
+            </div>
+            
+            <div class="form-group">
+                {{ form.material.label }}
+                {{ form.material(class="form-control", id="material-select") }}
+                <div id="custom-material-group">
+                    <input type="text" id="custom-material" name="custom_material" 
+                           placeholder="Enter custom material" class="form-control">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                {{ form.tool_no.label }}
+                {{ form.tool_no(class="form-control") }}
+            </div>
+            
+            <div class="form-group">
+                {{ form.estimated_time.label }}
+                {{ form.estimated_time(class="form-control") }}
+            </div>
+            
+            <div class="form-group">
+                {{ form.operator_name.label }}
+                {{ form.operator_name(class="form-control") }}
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Start Simulation</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('material-select').addEventListener('change', function() {
+            const customGroup = document.getElementById('custom-material-group');
+            customGroup.style.display = this.value === 'Custom' ? 'block' : 'none';
+            if(this.value !== 'Custom') {
+                document.getElementById('custom-material').value = '';
+            }
+        });
+    </script>
+</body>
+</html>

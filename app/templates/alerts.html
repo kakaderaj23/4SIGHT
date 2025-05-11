@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Alerts History - Lathe {{ lathe_id }}</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>Message</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for alert in alerts %}
+        <tr>
+            <td>{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ alert.message }}</td>
+            <td>{{ alert.status }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

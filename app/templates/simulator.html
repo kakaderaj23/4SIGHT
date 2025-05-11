@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simulation Running</title>
+    <style>
+        .status-container {
+            text-align: center;
+            padding: 50px;
+        }
+        .sensor-data {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .sensor-card {
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <h2>Simulation Running for Lathe {{ lathe_id }}</h2>
+        <p>Job ID: {{ job_id }}</p>
+        <p>Status: <span id="status">Started</span></p>
+        
+        <div class="sensor-data">
+            <div class="sensor-card">
+                <h3>Temperature</h3>
+                <p id="temperature">-- °C</p>
+            </div>
+            <div class="sensor-card">
+                <h3>Vibration</h3>
+                <p id="vibration">-- mm/s²</p>
+            </div>
+            <div class="sensor-card">
+                <h3>RPM</h3>
+                <p id="rpm">--</p>
+            </div>
+            <div class="sensor-card">
+                <h3>Power</h3>
+                <p id="power">-- kW</p>
+            </div>
+        </div>
+        
+        <a href="{{ url_for('dashboard') }}">
+            <button>Back to Dashboard</button>
+        </a>
+    </div>
+
+    <script>
+        // Real-time updates using Server-Sent Events
+        const eventSource = new EventSource("/simulation/status/{{ lathe_id }}");
+        
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            document.getElementById('temperature').textContent = 
+                data.temperature.toFixed(1) + " °C";
+            document.getElementById('vibration').textContent = 
+                data.vibration.toFixed(2) + " mm/s²";
+            document.getElementById('rpm').textContent = 
+                data.rpm;
+            document.getElementById('power').textContent = 
+                data.power.toFixed(2) + " kW";
+            
+            if(data.status === 'completed') {
+                document.getElementById('status').textContent = "Completed";
+                eventSource.close();
+            }
+        };
+    </script>
+</body>
+</html>
