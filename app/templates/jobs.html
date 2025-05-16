@@ -1,23 +1,39 @@
 {% extends "base.html" %}
 
+{% block title %}Job History - {{ machine_id }}{% endblock %}
+
 {% block content %}
-<h1>Job History - Lathe {{ lathe_id }}</h1>
+<h1>Job History - {{ machine_id }}</h1>
 <table>
     <thead>
         <tr>
             <th>Job ID</th>
+            <th>Job Type</th>
             <th>Start Time</th>
             <th>Operator</th>
             <th>Status</th>
+            <th>Estimated (min)</th>
+            <th>Actual (min)</th>
         </tr>
     </thead>
     <tbody>
         {% for job in jobs %}
         <tr>
-            <td>{{ job.JobID }}</td>
-            <td>{{ job.StartTime.strftime('%Y-%m-%d %H:%M') }}</td>
-            <td>{{ job.OperatorName }}</td>
-            <td>{{ job.Status }}</td>
+            <td>{{ job.jobId }}</td>
+            <td>{{ job.jobType }}</td>
+            <td>
+                {% if job.startTime %}
+                    {{ job.startTime.strftime('%Y-%m-%d %H:%M') }}
+                {% endif %}
+            </td>
+            <td>{{ job.operatorId }}</td>
+            <td>
+                <span class="status-badge {{ job.status|lower }}">
+                    {{ job.status|capitalize }}
+                </span>
+            </td>
+            <td>{{ job.estimatedTime }}</td>
+            <td>{{ job.actualDuration }}</td>
         </tr>
         {% endfor %}
     </tbody>

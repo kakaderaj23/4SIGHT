@@ -1,0 +1,15 @@
+Flask>=2.2
+flask-cors
+flask-socketio
+pymongo
+python-dotenv
+gevent
+gevent-websocket
+eventlet
+flask-wtf
+numpy
+pandas
+requests
+matplotlib
+scipy
+gunicorn

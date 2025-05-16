@@ -1,40 +1,84 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Lathe {{ lathe_id }} Control</title>
+    <title>Lathe {{ machine_id }} Control</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='lathe.css') }}">
 </head>
 <body>
     <div class="control-panel">
-        <h2>Lathe {{ lathe_id }} Controls</h2>
+        <h2>Lathe {{ machine_id }} Controls</h2>
         
         <div class="button-group">
-            <a href="{{ url_for('start_simulator', lathe_id=lathe_id) }}" class="btn">Start Simulator</a>
-            <a href="{{ url_for('job_history', lathe_id=lathe_id) }}" class="btn">Job History</a>
-            <a href="{{ url_for('alert_history', lathe_id=lathe_id) }}" class="btn">Alert History</a>
-            <a href="{{ url_for('add_alert', lathe_id=lathe_id) }}" 
+            <a href="{{ url_for('start_simulator', machine_id=machine_id) }}" class="btn">Start Simulator</a>
+            <a href="{{ url_for('job_history', machine_id=machine_id) }}" class="btn">Job History</a>
+            <a href="{{ url_for('alert_history', machine_id=machine_id) }}" class="btn">Alert History</a>
+         <a href="{{ url_for('add_alert', machine_id=machine_id) }}" 
    class="btn" 
    target="_blank"
    onclick="window.open(this.href, 'Alert Window', 'width=500,height=400'); return false;">
    Add Alert
 </a>
-
         </div>
-
-        
 
         <!-- Current Status Display -->
         <div class="status-overview">
             <h3>Current Status</h3>
             {% if current_job %}
-                <p><strong>Job ID:</strong> {{ current_job.JobID }}</p>
-                <p><strong>Status:</strong> {{ current_job.Status }}</p>
-                <p><strong>Temperature:</strong> {{ sensor_data.Temperature|round(1) }}°C</p>
-                <p><strong>Vibration:</strong> {{ sensor_data.Vibration|round(2) }} mm/s²</p>
+                <p><strong>Job ID:</strong> {{ current_job.jobId }}</p>
+                <p><strong>Job Type:</strong> {{ current_job.jobType }}</p>
+                <p><strong>Description:</strong> {{ current_job.jobDescription }}</p>
+               <p><strong>Status:</strong>
+    <span class="status-badge {{ current_job.status|lower }}">
+        {{ current_job.status|capitalize }}
+    </span>
+</p>
+
+                <p><strong>Operator:</strong> {{ current_job.operatorId }}</p>
+                <p><strong>Estimated Time:</strong> {{ current_job.estimatedTime }} min</p>
+                <p><strong>Started At:</strong> {{ current_job.startTime }}</p>
+                <p><strong>Actual Duration:</strong> {{ current_job.actualDuration }} min</p>
+                {% if sensor_data %}
+                    <hr>
+                    <p><strong>Temperature:</strong> {{ sensor_data.temperature|round(1) }} °C</p>
+                    <p><strong>Vibration:</strong> {{ sensor_data.vibration|round(2) }} mm/s²</p>
+                    <p><strong>RPM:</strong> {{ sensor_data.rpm|round(0) }}</p>
+                    <p><strong>Power Consumption:</strong> {{ sensor_data.powerConsumption|round(2) }} kW</p>
+                    <p><strong>Tool Wear:</strong> {{ sensor_data.toolWear|round(3) }} mm</p>
+                {% else %}
+                    <p>No sensor data available.</p>
+                {% endif %}
             {% else %}
-                <p>Lathe is currently idle</p>
+                <p>Lathe is currently idle.</p>
             {% endif %}
         </div>
     </div>
+    <!-- Add this script at the end of body -->
+<script>
+    function updateSensorData() {
+        fetch("{{ url_for('simulation_status', machine_id=machine_id) }}")
+            .then(response => response.text())
+            .then(data => {
+                const eventSource = new EventSource("{{ url_for('simulation_status', machine_id=machine_id) }}");
+                eventSource.onmessage = function(e) {
+                    const data = JSON.parse(e.data);
+                    if (data.status === 'running') {
+                        // Update DOM elements with new data
+                        document.querySelector('[data-temperature]').textContent = data.temperature.toFixed(1);
+                        document.querySelector('[data-vibration]').textContent = data.vibration.toFixed(2);
+                        document.querySelector('[data-rpm]').textContent = Math.round(data.rpm);
+                    } else {
+                        eventSource.close();
+                        window.location.reload();  // Refresh when job completes
+                    }
+                };
+            });
+    }
+
+    // Start updates if job is ongoing
+    {% if current_job and current_job.status == 'ongoing' %}
+    updateSensorData();
+    {% endif %}
+</script>
+
 </body>
 </html>

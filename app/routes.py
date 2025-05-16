@@ -1,127 +1,54 @@
-# from app import app
-# from flask import Flask, render_template, redirect, url_for
-# from app.forms import JobForm  # Absolute import
-# # OR
-# from .forms import JobForm     # Relative import
-
-# from .simulator import start_simulation  # Relative import
-# # OR
-# from app.simulator import start_simulation  # Absolute import
-
-# from pymongo import MongoClient
-# import os
-# from datetime import datetime
-# from flask import Response
-# import json
-# import time
-# # app = Flask(__name__)
-# # app.config.from_pyfile('config.py')
-
-# # MongoDB Connection
-# client = MongoClient(os.getenv('MONGO_URI'))
-
-# @app.route('/')
-# def dashboard():
-#     return render_template('dashboard.html', lathes=range(1,21))
-
-# @app.route('/lathe/<int:lathe_id>', methods=['GET', 'POST'])
-# def lathe_detail(lathe_id):
-#     form = JobForm()
-#     db_name = f'Lathe{lathe_id}'
-    
-#     if form.validate_on_submit():
-#         # Generate Job ID
-#         db = client[db_name]
-#         last_job = db.JobDetails.find_one(sort=[("_id", -1)])
-#         job_id = f"{int(last_job['JobID'])+1:03d}" if last_job else '001'
-        
-#         # Save Job Details
-#         job_data = {
-#             'JobID': job_id,
-#             'JobType': form.job_type.data,
-#             'JobDescription': form.job_description.data,
-#             'Material': form.material.data,
-#             'ToolNo': form.tool_no.data,
-#             'StartTime': datetime.now(),
-#             'EstimatedTime': form.estimated_time.data,
-#             'OperatorName': form.operator_name.data,
-#             'Status': 'Started'
-#         }
-#         db.JobDetails.insert_one(job_data)
-        
-#         # Start Simulator
-#         start_simulation(lathe_id, job_id, form.estimated_time.data)
-        
-#         return redirect(url_for('dashboard'))
-    
-#     return render_template('lathe_detail.html', form=form, lathe_id=lathe_id)
-
-
-# @app.route('/simulation/status/<int:lathe_id>')
-# def simulation_status(lathe_id):
-#     def generate():
-#         client = MongoClient(os.getenv('MONGO_URI'))
-#         db = client[f'Lathe{lathe_id}']
-        
-#         while True:
-#             last_data = db.SensoryData.find_one(
-#                 sort=[("_id", -1)]
-#             )
-#             job_status = db.JobDetails.find_one(
-#                 {"Status": "Started"},
-#                 sort=[("_id", -1)]
-#             )
-            
-#             if last_data and job_status:
-#                 data = {
-#                     "temperature": last_data["Temperature"],
-#                     "vibration": last_data["Vibration"],
-#                     "rpm": last_data["RPM"],
-#                     "power": last_data["Power"],
-#                     "status": "running"
-#                 }
-#             else:
-#                 data = {"status": "completed"}
-            
-#             yield f"data: {json.dumps(data)}\n\n"
-#             time.sleep(1)
-    
-#     return Response(generate(), mimetype="text/event-stream")
-
-from app import app  # Use existing app from __init__.py
-from flask import Flask, flash, render_template, redirect, url_for, Response, request
-from app.forms import JobForm  # Absolute import kept as requested
-from app.simulator import start_simulation  # Absolute import
-# Add this import at the top
-from app.forms import AlertForm  # Absolute import
-# OR
-from .forms import AlertForm     # Relative import
-
+from app import app
+from flask import Flask, flash, render_template, redirect, url_for, Response, request, g
+from app.forms import JobForm, AlertForm
+from app.simulator import start_simulation
 from pymongo import MongoClient
 import os
 from datetime import datetime
 import json
 import time
+import uuid
 
-# Use existing client from __init__.py or create if needed
-client = MongoClient(os.getenv('MONGO_URI')) 
+def get_collections(machine_id):
+    """Get collections for specific machine"""
+    machine_num = int(machine_id.split('-')[1])  # Extract numeric part from LATHE-01
+    return {
+        'jobs': g.db['Jobs'][f'lathe{machine_num}_job_detail'],
+        'sensor': g.db['SensorData'][f'lathe{machine_num}_sensory_data'],
+        'alerts': g.db['Alerts'][f'lathe{machine_num}_alerts']
+    }
+
+def get_db():
+    """Get database connection"""
+    if 'db' not in g:
+        g.db = MongoClient(os.getenv('MONGO_URI'))
+    return g.db
+
+@app.teardown_appcontext
+def close_db(error):
+    """Close database connection"""
+    if 'db' in g:
+        g.db.close()
 
 @app.route('/')
 def dashboard():
-    lathe_statuses = []
-    on_count = 0
-    off_count = 0
-    total_lathes = 20
+    db = get_db()
+    active_machines = []
+    
+    # Check each lathe's job collection
+    for machine_num in range(1, 21):
+        collection = db['Jobs'][f'lathe{machine_num}_job_detail']
+        if collection.find_one({"status": "ongoing"}):
+            active_machines.append(f"LATHE-{machine_num:02d}")
 
-    for lathe_id in range(1, 21):
-        db = client[f'Lathe{lathe_id}']
-        job = db.JobDetails.find_one({'Status': 'Started'})
-        is_on = bool(job)
-        lathe_statuses.append({'id': lathe_id, 'is_on': is_on})
-        if is_on:
-            on_count += 1
-        else:
-            off_count += 1
+    total_lathes = 20
+    on_count = len(active_machines)
+    off_count = total_lathes - on_count
+
+    lathe_statuses = [{
+        'id': f"LATHE-{num:02d}",
+        'is_on': f"LATHE-{num:02d}" in active_machines
+    } for num in range(1, 21)]
 
     return render_template(
         'dashboard.html',
@@ -131,43 +58,138 @@ def dashboard():
         off_count=off_count
     )
 
-@app.route('/lathe/<int:lathe_id>', methods=['GET', 'POST'])
-def lathe_detail(lathe_id):
+@app.route('/lathe/<machine_id>', methods=['GET', 'POST'])
+def lathe_detail(machine_id):
+    db = get_db()
+    collections = get_collections(machine_id)
     alert_form = AlertForm()
-    db = client[f'Lathe{lathe_id}']
     
     if alert_form.validate_on_submit():
-        db.Alerts.insert_one({
-            "timestamp": datetime.now(),
+        collections['alerts'].insert_one({
+            "machineId": machine_id,
+            "timestamp": datetime.utcnow(),
             "message": alert_form.message.data,
             "status": "active"
         })
         flash('Alert created successfully!', 'success')
-        return redirect(url_for('lathe_detail', lathe_id=lathe_id))
+        return redirect(url_for('lathe_detail', machine_id=machine_id))
     
-    current_job = db.JobDetails.find_one({"Status": "Started"})
-    sensor_data = db.SensoryData.find_one(sort=[("_id", -1)])
+    current_job = collections['jobs'].find_one({"status": "ongoing"})
+    sensor_data = collections['sensor'].find_one(sort=[("timestamp", -1)])
     
     return render_template('lathe_detail.html',
-                         lathe_id=lathe_id,
+                         machine_id=machine_id,
                          current_job=current_job,
                          sensor_data=sensor_data,
                          alert_form=alert_form)
 
-@app.route('/lathe/<int:lathe_id>/add_alert')
-def add_alert(lathe_id):
-    alert_form = AlertForm()
-    return render_template('alert_form.html', 
-                         alert_form=alert_form,
-                         lathe_id=lathe_id)
+@app.route('/lathe/<machine_id>/start', methods=['GET', 'POST'])
+def start_simulator(machine_id):
+    db = get_db()
+    collections = get_collections(machine_id)
+    form = JobForm()
+    
+    if form.validate_on_submit():
+        job_id = str(uuid.uuid4())
+        job_data = {
+            "_id": job_id,
+            "machineId": machine_id,
+            "operatorId": form.operator_name.data,
+            "jobId": job_id,
+            "jobType": form.job_type.data,
+            "jobDescription": form.job_description.data,
+            "startTime": datetime.utcnow(),
+            "status": "ongoing",
+            "estimatedTime": form.estimated_time.data,
+            "actualDuration": 0
+        }
+        
+        collections['jobs'].insert_one(job_data)
+        start_simulation(
+            machine_id=machine_id,
+            job_id=job_id,
+            duration=form.estimated_time.data,
+            material=form.material.data,
+            job_type=form.job_type.data,
+            tool_no=form.tool_no.data
+        )
+        flash('Simulation started successfully!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('simulator_form.html', 
+                         form=form, 
+                         machine_id=machine_id)
 
-@app.route('/lathe/<int:lathe_id>/alerts', methods=['POST'])
-def handle_alert(lathe_id):
+@app.route('/lathe/<machine_id>/jobs')
+def job_history(machine_id):
+    db = get_db()
+    collections = get_collections(machine_id)
+    jobs = list(collections['jobs'].find(sort=[("startTime", -1)]))
+    return render_template('jobs.html', jobs=jobs, machine_id=machine_id)
+
+@app.route('/lathe/<machine_id>/alerts')
+def alert_history(machine_id):
+    db = get_db()
+    collections = get_collections(machine_id)
+    alerts = list(collections['alerts'].find(sort=[("timestamp", -1)]))
+    return render_template('alerts.html', alerts=alerts, machine_id=machine_id)
+
+@app.route('/lathe/<machine_id>/status')
+def current_status(machine_id):
+    db = get_db()
+    collections = get_collections(machine_id)
+    current_job = collections['jobs'].find_one({"status": "ongoing"})
+    sensor_data = collections['sensor'].find_one(sort=[("timestamp", -1)])
+    
+    return render_template('status.html',
+                         current_job=current_job,
+                         sensor_data=sensor_data,
+                         machine_id=machine_id)
+
+@app.route('/simulation/status/<machine_id>')
+def simulation_status(machine_id):
+    db = get_db()
+    collections = get_collections(machine_id)
+    
+    def generate():
+        while True:
+            last_data = collections['sensor'].find_one(sort=[("timestamp", -1)])
+            current_job = collections['jobs'].find_one({"status": "ongoing"})
+            
+            data = {"status": "completed"}
+            if last_data and current_job:
+                data.update({
+                    "temperature": last_data.get("temperature", 0),
+                    "vibration": last_data.get("vibration", 0),
+                    "rpm": last_data.get("rpm", 0),
+                    "powerConsumption": last_data.get("powerConsumption", 0),
+                    "status": "running"
+                })
+            
+            yield f"data: {json.dumps(data)}\n\n"
+            time.sleep(1)
+    
+    return Response(generate(), mimetype="text/event-stream")
+
+@app.route('/lathe/<machine_id>/add_alert', methods=['GET'])
+def add_alert(machine_id):
     alert_form = AlertForm()
+    return render_template('alert_form.html',
+                         alert_form=alert_form,
+                         machine_id=machine_id)
+
+@app.route('/lathe/<machine_id>/alerts', methods=['POST'])
+def handle_alert(machine_id):
+    db = get_db()
+    collections = get_collections(machine_id)
+    alert_form = AlertForm()
+    
     if alert_form.validate_on_submit():
-        db = client[f'Lathe{lathe_id}']
-        db.Alerts.insert_one({
-            "timestamp": datetime.now(),
+        collections['alerts'].insert_one({
+            "machineId": machine_id,
+            "timestamp": datetime.utcnow(),
+            "alertType": "General",
+            "severity": 3,
             "message": alert_form.message.data,
             "status": "active"
         })
@@ -181,100 +203,4 @@ def handle_alert(lathe_id):
         '''
     return render_template('alert_form.html',
                          alert_form=alert_form,
-                         lathe_id=lathe_id)
-
-
-@app.route('/lathe/<int:lathe_id>/start', methods=['GET', 'POST'])
-def start_simulator(lathe_id):
-    form = JobForm()
-    db = client[f'Lathe{lathe_id}']
-    
-    if form.validate_on_submit():
-        # Handle custom material
-        material = form.material.data
-        if material == "Custom":
-            material = request.form.get("custom_material", "")
-
-        # Generate Job ID
-        last_job = db.JobDetails.find_one(sort=[("JobID", -1)])
-        job_id = f"{int(last_job['JobID'])+1:03d}" if last_job else '001'
-
-        # Create job record
-        job_data = {
-            'JobID': job_id,
-            'JobType': form.job_type.data,
-            'JobDescription': form.job_description.data,
-            'Material': material,
-            'ToolNo': form.tool_no.data,
-            'StartTime': datetime.now(),
-            'EstimatedTime': form.estimated_time.data,
-            'OperatorName': form.operator_name.data,
-            'Status': 'Started'
-        }
-        db.JobDetails.insert_one(job_data)
-        
-        # Start simulation with all parameters
-        start_simulation(
-            lathe_id=lathe_id,
-            job_id=job_id,
-            duration=form.estimated_time.data,
-            material=material,
-            job_type=form.job_type.data,
-            tool_no=form.tool_no.data
-        )
-        flash('Simulation started successfully!', 'success')
-        return redirect(url_for('dashboard'))
-    
-    return render_template('simulator_form.html', 
-                         form=form, 
-                         lathe_id=lathe_id)
-
-@app.route('/lathe/<int:lathe_id>/jobs')  # ✔️ Correct route
-def job_history(lathe_id):
-    db = client[f'Lathe{lathe_id}']
-    jobs = list(db.JobDetails.find().sort("StartTime", -1))
-    return render_template('jobs.html', jobs=jobs, lathe_id=lathe_id)
-
-@app.route('/lathe/<int:lathe_id>/alerts')
-def alert_history(lathe_id):
-    db = client[f'Lathe{lathe_id}']
-    alerts = list(db.Alerts.find().sort("timestamp", -1))
-    return render_template('alerts.html', alerts=alerts, lathe_id=lathe_id)
-
-@app.route('/lathe/<int:lathe_id>/status')
-def current_status(lathe_id):
-    db = client[f'Lathe{lathe_id}']
-    current_job = db.JobDetails.find_one({"Status": "Started"})
-    sensor_data = db.SensoryData.find_one(sort=[("_id", -1)])
-    return render_template('status.html',
-                         current_job=current_job,
-                         sensor_data=sensor_data,
-                         lathe_id=lathe_id)
-
-
-@app.route('/simulation/status/<int:lathe_id>')
-def simulation_status(lathe_id):
-    def generate():
-        # Use existing client connection
-        db = client[f'Lathe{lathe_id}']  
-        while True:
-            last_data = db.SensoryData.find_one(sort=[("_id", -1)])
-            job_status = db.JobDetails.find_one(
-                {"Status": "Started"},
-                sort=[("JobID", -1)]  # Sort by JobID
-            )
-            
-            data = {"status": "completed"}
-            if last_data and job_status:
-                data.update({
-                    "temperature": last_data["Temperature"],
-                    "vibration": last_data["Vibration"],
-                    "rpm": last_data["RPM"],
-                    "power": last_data["Power"],
-                    "status": "running"
-                })
-            
-            yield f"data: {json.dumps(data)}\n\n"
-            time.sleep(1)
-    
-    return Response(generate(), mimetype="text/event-stream")
+                         machine_id=machine_id)

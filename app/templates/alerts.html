@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Alerts History - Lathe {{ lathe_id }}</h1>
+<h1>Alerts History - {{ machine_id }}</h1>
 <table>
     <thead>
         <tr>
             <th>Timestamp</th>
+            <th>Type</th>
+            <th>Severity</th>
             <th>Message</th>
             <th>Status</th>
         </tr>
@@ -14,8 +16,18 @@
         {% for alert in alerts %}
         <tr>
             <td>{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ alert.alertType }}</td>
+            <td>
+                <span class="severity-badge severity-{{ alert.severity }}">
+                    {{ alert.severity }}
+                </span>
+            </td>
             <td>{{ alert.message }}</td>
-            <td>{{ alert.status }}</td>
+            <td>
+                <span class="status-badge {{ alert.status|lower }}">
+                    {{ alert.status|capitalize }}
+                </span>
+            </td>
         </tr>
         {% endfor %}
     </tbody>
