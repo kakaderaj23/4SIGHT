@@ -1,0 +1,45 @@
+<style>
+.navbar {
+    background-color: #1f4037;  /* Solid dark green theme */
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 32px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-sizing: border-box;
+}
+
+.navbar-title {
+    font-weight: bold;
+    font-size: 18px;
+    white-space: nowrap;
+}
+
+.navbar-links {
+    display: flex;
+    gap: 24px;
+    flex-wrap: nowrap;
+}
+
+.navbar-links a {
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.navbar-links a:hover {
+    color: #99f2c8;
+}
+</style>
+
+<div class="navbar">
+    <div class="navbar-title">Digital Twin System</div>
+    <div class="navbar-links">
+        <a href="{{ url_for('home_redirect') }}">Home</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+</div>

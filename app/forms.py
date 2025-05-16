@@ -2,6 +2,8 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, IntegerField, FloatField
 from wtforms.validators import DataRequired
 from wtforms import TextAreaField
+from wtforms import PasswordField
+
 
 JOB_TYPES = [
     ('turning', 'Turning'),
@@ -31,3 +33,8 @@ class JobForm(FlaskForm):
 
 class AlertForm(FlaskForm):
     message = TextAreaField('Alert Message', validators=[DataRequired()])
+
+
+class LoginForm(FlaskForm):
+    userID = StringField("User ID", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired()])
