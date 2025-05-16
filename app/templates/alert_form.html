@@ -6,15 +6,16 @@
 </head>
 <body>
     <div class="alert-form-container">
-        <h2>Create New Alert</h2>
-        <form method="POST" action="{{ url_for('handle_alert', lathe_id=lathe_id) }}">
-            {{ alert_form.csrf_token }}
-            <div class="form-group">
-                {{ alert_form.message.label }}
-                {{ alert_form.message(class="form-control", rows=4) }}
-            </div>
-            <button type="submit" class="btn btn-alert">Send Alert</button>
-        </form>
-    </div>
+    <h2>Create Alert for {{ machine_id }}</h2>
+    <form method="POST" action="{{ url_for('handle_alert', machine_id=machine_id) }}">
+        {{ alert_form.hidden_tag() }}
+        <div class="form-group">
+            {{ alert_form.message.label }}
+            {{ alert_form.message(class="form-control") }}
+        </div>
+        <button type="submit" class="btn-alert">Create Alert</button>
+    </form>
+</div>
+
 </body>
 </html>

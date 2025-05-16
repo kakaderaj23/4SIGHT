@@ -1,13 +1,27 @@
 {% extends "base.html" %}
 
+{% block title %}Current Status - {{ machine_id }}{% endblock %}
+
 {% block content %}
-<h1>Current Status - Lathe {{ lathe_id }}</h1>
-<div class="status-box">
+<h1>Current Status - {{ machine_id }}</h1>
+<div class="status-overview">
     {% if current_job %}
-        <p><strong>Job ID:</strong> {{ current_job.JobID }}</p>
-        <p><strong>Operator:</strong> {{ current_job.OperatorName }}</p>
-        <p><strong>Temperature:</strong> {{ sensor_data.Temperature|round(1) }}°C</p>
-        <p><strong>Vibration:</strong> {{ sensor_data.Vibration|round(2) }} mm/s²</p>
+        <p><strong>Job ID:</strong> {{ current_job.jobId }}</p>
+        <p><strong>Job Type:</strong> {{ current_job.jobType }}</p>
+        <p><strong>Operator:</strong> {{ current_job.operatorId }}</p>
+        <p><strong>Status:</strong> 
+            <span class="status-badge {{ current_job.status|lower }}">
+                {{ current_job.status|capitalize }}
+            </span>
+        </p>
+        {% if sensor_data %}
+            <hr>
+            <p><strong>Temperature:</strong> {{ sensor_data.temperature|round(1) }}°C</p>
+            <p><strong>Vibration:</strong> {{ sensor_data.vibration|round(2) }} mm/s²</p>
+            <p><strong>RPM:</strong> {{ sensor_data.rpm|round(0) }}</p>
+            <p><strong>Power:</strong> {{ sensor_data.powerConsumption|round(2) }} kW</p>
+            <p><strong>Tool Wear:</strong> {{ sensor_data.toolWear|round(3) }} mm</p>
+        {% endif %}
     {% else %}
         <p>Lathe is currently idle</p>
     {% endif %}

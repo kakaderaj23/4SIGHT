@@ -3,7 +3,7 @@
 <head>
     <title>Lathe Machine Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
-    </head>
+</head>
 <body>
     <h1 style="text-align:center;">Lathe Machines Dashboard</h1>
 
@@ -15,9 +15,9 @@
 
     <div class="lathe-grid">
         {% for lathe in lathe_statuses %}
-            <a href="{{ url_for('lathe_detail', lathe_id=lathe.id) }}">
+            <a href="{{ url_for('lathe_detail', machine_id=lathe.id) }}">
                 <button class="lathe-btn">
-                    Lathe {{ lathe.id }}
+                    {{ lathe.id }}
                     <span class="status-dot {% if lathe.is_on %}on{% else %}off{% endif %}"></span>
                 </button>
             </a>

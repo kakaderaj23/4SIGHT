@@ -1,10 +1,8 @@
-
 from threading import Thread
 from pymongo import MongoClient
 import random
 import time
 import os
-import math
 from datetime import datetime
 
 # Material properties database (typical values)
@@ -26,7 +24,6 @@ MATERIAL_PROFILES = {
     }
 }
 
-# Tool wear parameters
 TOOL_WEAR_RATES = {
     'Mild Steel': 0.15,  # % per minute
     'Aluminum': 0.08,
@@ -52,117 +49,118 @@ def calculate_machine_parameters(material, job_type, tool_diameter):
 
     return base_rpm, base_power
 
-def generate_sensor_data(lathe_id, job_id, duration, material, job_type, tool_no):
-    client = MongoClient(os.getenv('MONGO_URI'))
-    db = client[f'Lathe{lathe_id}']
-    
-    # Simulation parameters
-    start_time = time.time()
-    tool_diameter = 10 + tool_no * 2  # mm (example relationship)
-    base_rpm, base_power = calculate_machine_parameters(material, job_type, tool_diameter)
-    tool_wear = 0
-    cooling_efficiency = 0.7  # 0-1 (coolant effectiveness)
-    
-    # Initial thermal conditions
-    ambient_temp = 25
-    workpiece_temp = ambient_temp
-    
-    while time.time() - start_time < duration * 60:
-        elapsed = (time.time() - start_time) / 60  # minutes
+def generate_sensor_data(machine_id, job_id, duration, material, job_type, tool_no):
+    client = None
+    try:
+        client = MongoClient(os.getenv('MONGO_URI'))
         
-        # Dynamic tool wear simulation
-        tool_wear = min(100, TOOL_WEAR_RATES[material] * elapsed)
+        # Extract machine number from ID (e.g., "LATHE-01" -> 1)
+        machine_number = int(machine_id.split('-')[1])
         
-        # RPM variation (±10% with tool wear impact)
-        current_rpm = base_rpm * (1 - tool_wear/500) * random.normalvariate(1, 0.03)
-        
-        # Power consumption (increases with tool wear)
-        power_factor = 1 + (tool_wear/100) * 0.5
-        current_power = base_power * power_factor * random.normalvariate(1, 0.05)
-        
-        # Temperature modeling (simplified thermal dynamics)
-        heat_generation = current_power * 1000 * 0.8  # 80% of energy converts to heat
-        material_props = MATERIAL_PROFILES[material]
-        temp_increase = (heat_generation * elapsed * 60) / \
-                      (material_props['specific_heat'] * material_props['hardness'])
-        workpiece_temp = ambient_temp + temp_increase * (1 - cooling_efficiency)
-        
-        # Vibration modeling (increases with tool wear and RPM)
-        vibration_base = {
-            'Mild Steel': 2.5,
-            'Aluminum': 1.8,
-            'Wood': 0.8
-        }[material]
-        vibration = vibration_base * (current_rpm/1000) * (1 + tool_wear/50) * random.normalvariate(1, 0.1)
-        
-        sensor_data = {
-            'timestamp': datetime.now(),
-            'JobID': job_id,
-            'Temperature': max(ambient_temp, min(workpiece_temp + random.gauss(0, 2), 300)),
-            'Vibration': max(0, vibration),
-            'RPM': max(100, current_rpm),
-            'Power': max(0.5, current_power),
-            'ToolWear': tool_wear,
-            'Material': material,
-            'JobType': job_type
-        }
-        
-        db.SensoryData.insert_one(sensor_data)
-        time.sleep(5)
-    
-    # Final status update
-    db.JobDetails.update_one(
-        {'JobID': job_id},
-        {'$set': {'Status': 'Completed', 'FinalToolWear': tool_wear}}
-    )
+        # Get collection references
+        jobs_collection = client['Jobs'][f'lathe{machine_number}_job_detail']
+        sensor_collection = client['SensorData'][f'lathe{machine_number}_sensory_data']
 
-def start_simulation(lathe_id, job_id, duration, material, job_type, tool_no):
+        # Calculate initial parameters
+        tool_diameter = 10 + tool_no * 2  # mm
+        base_rpm, base_power = calculate_machine_parameters(material, job_type, tool_diameter)
+        ambient_temp = 25  # Initial ambient temperature
+        cooling_efficiency = 0.7  # Cooling system effectiveness
+
+        # Convert duration to seconds and calculate end time
+        duration_seconds = duration * 60
+        start_time = time.time()
+        end_time = start_time + duration_seconds
+
+        # Initialize job document
+        jobs_collection.update_one(
+            {"_id": job_id},
+            {"$set": {
+                "machineId": machine_id,
+                "jobId": job_id,
+                "jobType": job_type,
+                "startTime": datetime.utcnow(),
+                "status": "ongoing",
+                "estimatedTime": duration
+            }},
+            upsert=True
+        )
+
+        # Main simulation loop
+        while time.time() < end_time:
+            elapsed = (time.time() - start_time) / 60  # minutes
+            
+            # Tool wear calculation
+            tool_wear = min(100, TOOL_WEAR_RATES[material] * elapsed)
+            
+            # RPM simulation
+            current_rpm = base_rpm * (1 - tool_wear/500) * random.normalvariate(1, 0.03)
+            
+            # Power consumption
+            power_factor = 1 + (tool_wear/100) * 0.5
+            current_power = base_power * power_factor * random.normalvariate(1, 0.05)
+            
+            # Temperature modeling
+            heat_generation = current_power * 1000 * 0.8
+            material_props = MATERIAL_PROFILES[material]
+            temp_increase = (heat_generation * elapsed * 60) / \
+                          (material_props['specific_heat'] * material_props['hardness'])
+            workpiece_temp = ambient_temp + temp_increase * (1 - cooling_efficiency)
+            
+            # Vibration modeling
+            vibration_base = {
+                'Mild Steel': 2.5,
+                'Aluminum': 1.8,
+                'Wood': 0.8
+            }[material]
+            vibration = vibration_base * (current_rpm/1000) * (1 + tool_wear/50) * random.normalvariate(1, 0.1)
+
+            # Create sensor document
+            sensor_data = {
+                "machineId": machine_id,
+                "jobId": job_id,
+                "timestamp": datetime.utcnow(),
+                "temperature": max(ambient_temp, min(workpiece_temp + random.gauss(0, 2), 300)),
+                "vibration": max(0, vibration),
+                "rpm": max(100, current_rpm),
+                "powerConsumption": max(0.5, current_power),
+                "toolWear": tool_wear
+            }
+            
+            sensor_collection.insert_one(sensor_data)
+            
+            # Dynamic sleep to prevent overshooting duration
+            remaining = end_time - time.time()
+            if remaining > 0:
+                time.sleep(min(5, remaining))
+
+    except Exception as e:
+        print(f"Simulation error: {str(e)}")
+        # Update job status to failed
+        if client:
+            jobs_collection.update_one(
+                {"_id": job_id},
+                {"$set": {"status": "failed", "error": str(e)}}
+            )
+    finally:
+        # Ensure job completion even if errors occur
+        if client:
+            try:
+                jobs_collection.update_one(
+                    {"_id": job_id},
+                    {"$set": {
+                        "status": "completed",
+                        "endTime": datetime.utcnow(),
+                        "actualDuration": round(time.time() - start_time, 2)
+                    }}
+                )
+            except Exception as e:
+                print(f"Failed to update job status: {str(e)}")
+            finally:
+                client.close()
+
+def start_simulation(machine_id, job_id, duration, material, job_type, tool_no):
     thread = Thread(target=generate_sensor_data, 
-                   args=(lathe_id, job_id, duration, material, job_type, tool_no))
+                   args=(machine_id, job_id, duration, material, job_type, tool_no))
+    thread.daemon = True  # Allow thread to exit with main program
     thread.start()
-
- 
-
-# from threading import Thread
-# import random
-# import time
-# from datetime import datetime
-
-# def generate_sensor_data(db, lathe_id, job_id, duration, material, job_type, tool_no):
-#     """Generate sensor data using provided database connection"""
-#     start_time = time.time()
-    
-#     try:
-#         while time.time() - start_time < duration * 60:
-#             # Realistic data generation logic
-#             sensor_data = {
-#                 'timestamp': datetime.now(),
-#                 'JobID': job_id,
-#                 'LatheID': lathe_id,
-#                 'Material': material,
-#                 'JobType': job_type,
-#                 'ToolNo': tool_no,
-#                 'Temperature': random.uniform(20, 100),
-#                 'Vibration': random.uniform(0, 10),
-#                 'RPM': random.randint(500, 3000),
-#                 'Power': random.uniform(1, 15)
-#             }
-#             db.SensoryData.insert_one(sensor_data)
-#             time.sleep(5)
-        
-#         # Final update
-#         db.JobDetails.update_one(
-#             {'JobID': job_id},
-#             {'$set': {'Status': 'Completed'}}
-#         )
-        
-#     except Exception as e:
-#         print(f"Error in sensor data generation: {str(e)}")
-
-# def start_simulation(db, lathe_id, job_id, duration, material, job_type, tool_no):
-#     """Start simulation thread with database context"""
-#     thread = Thread(
-#         target=generate_sensor_data,
-#         args=(db, lathe_id, job_id, duration, material, job_type, tool_no)
-#     )
-#     thread.start()

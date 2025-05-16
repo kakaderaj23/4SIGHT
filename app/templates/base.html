@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}{% endblock %} - Lathe Simulator</title>
+    <title>{% block title %}Lathe Simulator{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='lathe.css') }}">
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="padding: 2em 1em;">
         {% block content %}{% endblock %}
     </div>
 </body>
