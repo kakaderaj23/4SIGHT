@@ -96,6 +96,16 @@ h1 {
     box-shadow: 0 0 8px #ff4136, 0 0 2px #888;
 }
 
+.status-dot.maintenance {
+    background-color: #f0c420; /* yellow */
+}
+
+.lathe-btn.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
 .lathe-btn.inactive {
     background: #e0e0e0;
     color: #888;

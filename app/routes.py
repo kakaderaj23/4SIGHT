@@ -6,6 +6,7 @@ from app.models import User, auth_db
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
 from functools import wraps
+from datetime import datetime, timedelta
 from pymongo import MongoClient
 import os
 from datetime import datetime
@@ -34,6 +35,7 @@ def manager_required(f):
     return decorated_function
 
 # ------------------ DB Helpers ------------------
+lathe_maintenance = {}
 
 def get_db():
     if 'db' not in g:
@@ -140,24 +142,40 @@ def analytics_dashboard():
 def dashboard():
     db = get_db()
     active_machines = []
+    lathe_statuses = []
+    now = datetime.utcnow()
 
     for machine_num in range(1, 21):
-        collection = db['Jobs'][f'lathe{machine_num}_job_detail']
-        if collection.find_one({"status": "ongoing"}):
-            active_machines.append(f"LATHE-{machine_num:02d}")
+        machine_id = f"LATHE-{machine_num:02d}"
+        job_coll = db['Jobs'][f'lathe{machine_num}_job_detail']
+        is_on = bool(job_coll.find_one({"status": "ongoing"}))
 
-    lathe_statuses = [{
-        'id': f"LATHE-{num:02d}",
-        'is_on': f"LATHE-{num:02d}" in active_machines
-    } for num in range(1, 21)]
+        # Dummy in-memory maintenance check
+        maintenance = lathe_maintenance.get(machine_id)
+        under_maintenance = False
+        if maintenance and maintenance['start'] <= now <= maintenance['end']:
+            under_maintenance = True
+        elif maintenance and now > maintenance['end']:
+            del lathe_maintenance[machine_id]  # Clean expired
+
+        lathe_statuses.append({
+            'id': machine_id,
+            'is_on': is_on,
+            'under_maintenance': under_maintenance
+        })
+
+    total_lathes = 20
+    on_count = sum(1 for lathe in lathe_statuses if lathe['is_on'])
+    off_count = total_lathes - on_count
 
     return render_template(
         'dashboard.html',
         lathe_statuses=lathe_statuses,
-        total_lathes=20,
-        on_count=len(active_machines),
-        off_count=20 - len(active_machines)
+        total_lathes=total_lathes,
+        on_count=on_count,
+        off_count=off_count
     )
+
 
 # ------------------ Lathe Control & Monitoring ------------------
 
@@ -166,6 +184,14 @@ def dashboard():
 def lathe_detail(machine_id):
     collections = get_collections(machine_id)
     alert_form = AlertForm()
+
+    now = datetime.utcnow()
+    maintenance = lathe_maintenance.get(machine_id)
+    under_maintenance = False
+    if maintenance and maintenance['start'] <= now <= maintenance['end']:
+        under_maintenance = True
+    elif maintenance and now > maintenance['end']:
+        del lathe_maintenance[machine_id]
 
     if alert_form.validate_on_submit():
         collections['alerts'].insert_one({
@@ -184,15 +210,23 @@ def lathe_detail(machine_id):
         machine_id=machine_id,
         current_job=current_job,
         sensor_data=sensor_data,
-        alert_form=alert_form
+        alert_form=alert_form,
+        under_maintenance=under_maintenance
     )
+
 
 @app.route('/lathe/<machine_id>/start', methods=['GET', 'POST'])
 @login_required
 @operator_required
 def start_simulator(machine_id):
+    now = datetime.utcnow()
+    maintenance = lathe_maintenance.get(machine_id)
     collections = get_collections(machine_id)
     form = JobForm()
+
+    if maintenance and maintenance['start'] <= now <= maintenance['end']:
+        flash('Lathe is under maintenance. Try again later.', 'warning')
+        return redirect(url_for('lathe_detail', machine_id=machine_id))
 
     if form.validate_on_submit():
         job_id = str(uuid.uuid4())
@@ -267,6 +301,18 @@ def handle_alert(machine_id):
 def add_alert(machine_id):
     alert_form = AlertForm()
     return render_template('alert_form.html', alert_form=alert_form, machine_id=machine_id)
+
+@app.route('/lathe/<machine_id>/maintenance')
+@login_required
+@manager_required
+def schedule_maintenance(machine_id):
+    # Schedule maintenance for 10 minutes
+    lathe_maintenance[machine_id] = {
+        "start": datetime.utcnow(),
+        "end": datetime.utcnow() + timedelta(minutes=10)
+    }
+    flash(f"{machine_id} scheduled for maintenance.", "info")
+    return redirect(url_for('lathe_detail', machine_id=machine_id))
 
 @app.route('/lathe/<machine_id>/status')
 @login_required

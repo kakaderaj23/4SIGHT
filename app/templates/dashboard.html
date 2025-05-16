@@ -17,9 +17,13 @@
     <div class="lathe-grid">
         {% for lathe in lathe_statuses %}
             <a href="{{ url_for('lathe_detail', machine_id=lathe.id) }}">
-                <button class="lathe-btn">
+                <button class="lathe-btn {% if lathe.under_maintenance %}disabled{% endif %}">
                     {{ lathe.id }}
-                    <span class="status-dot {% if lathe.is_on %}on{% else %}off{% endif %}"></span>
+                    <span class="status-dot
+                        {% if lathe.under_maintenance %}maintenance
+                        {% elif lathe.is_on %}on
+                        {% else %}off{% endif %}">
+                    </span>
                 </button>
             </a>
         {% endfor %}
