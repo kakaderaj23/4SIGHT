@@ -38,17 +38,17 @@ def manager_required(f):
 lathe_maintenance = {}
 
 def get_db():
-    if 'db' not in g:
-        g.db = MongoClient(os.getenv('MONGO_URI'))
-    return g.db
+    if 'mongo_client' not in g:
+        g.mongo_client = MongoClient(os.getenv('MONGO_URI'))
+    return g.mongo_client
 
 def get_collections(machine_id):
     machine_num = int(machine_id.split('-')[1])
-    db = get_db()
+    client = get_db()  # ✅ use the correct function name
     return {
-        'jobs': db['Jobs'][f'lathe{machine_num}_job_detail'],
-        'sensor': db['SensorData'][f'lathe{machine_num}_sensory_data'],
-        'alerts': db['Alerts'][f'lathe{machine_num}_alerts']
+        'jobs': client['Jobs'][f'lathe{machine_num}_job_detail'],
+        'sensor': client['SensorData'][f'lathe{machine_num}_sensory_data'],
+        'alerts': client['Alerts'][f'lathe{machine_num}_alerts']
     }
 
 @app.teardown_appcontext
@@ -99,6 +99,7 @@ def manager_landing():
 @login_required
 @manager_required
 def analytics_dashboard():
+    db = get_db()
     lathe_jobs = []
     lathe_rpm = []
     lathe_temp = []
@@ -107,26 +108,44 @@ def analytics_dashboard():
     total_jobs = 0
     active_jobs = 0
 
-    for lathe_id in range(1, 21):
-        db = get_db()
-        jobs_coll = db[f'Lathe{lathe_id}'].JobDetails
-        sensor_coll = db[f'Lathe{lathe_id}'].SensoryData
+    for machine_num in range(1, 21):
+        job_coll = db['Jobs'][f'lathe{machine_num}_job_detail']
+        sensor_coll = db['SensorData'][f'lathe{machine_num}_sensory_data']
 
-        jobs_count = jobs_coll.count_documents({})
+        # Count jobs
+        jobs_count = job_coll.count_documents({})
         lathe_jobs.append(jobs_count)
         total_jobs += jobs_count
 
-        active_jobs += jobs_coll.count_documents({'Status': 'Started'})
+        active_jobs += job_coll.count_documents({'status': 'ongoing'})
 
-        rpm = sensor_coll.aggregate([{"$group": {"_id": None, "avg": {"$avg": "$RPM"}}}])
-        temp = sensor_coll.aggregate([{"$group": {"_id": None, "avg": {"$avg": "$Temperature"}}}])
-        power = sensor_coll.aggregate([{"$group": {"_id": None, "avg": {"$avg": "$Power"}}}])
+        # Compute averages (defensive handling in case of no data)
+        try:
+            rpm = sensor_coll.aggregate([
+                {"$group": {"_id": None, "avg": {"$avg": "$rpm"}}}
+            ])
+            lathe_rpm.append(round(next(rpm, {}).get('avg', 0), 2))
+        except:
+            lathe_rpm.append(0)
 
-        lathe_rpm.append(round(next(rpm, {}).get('avg', 0), 2))
-        lathe_temp.append(round(next(temp, {}).get('avg', 0), 2))
-        lathe_power.append(round(next(power, {}).get('avg', 0), 2))
+        try:
+            temp = sensor_coll.aggregate([
+                {"$group": {"_id": None, "avg": {"$avg": "$temperature"}}}
+            ])
+            lathe_temp.append(round(next(temp, {}).get('avg', 0), 2))
+        except:
+            lathe_temp.append(0)
 
-    return render_template('analytics_dashboard.html',
+        try:
+            power = sensor_coll.aggregate([
+                {"$group": {"_id": None, "avg": {"$avg": "$powerConsumption"}}}
+            ])
+            lathe_power.append(round(next(power, {}).get('avg', 0), 2))
+        except:
+            lathe_power.append(0)
+
+    return render_template(
+        'analytics_dashboard.html',
         lathe_jobs=lathe_jobs,
         lathe_rpm=lathe_rpm,
         lathe_temp=lathe_temp,
