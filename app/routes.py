@@ -4,6 +4,7 @@ from app.forms import JobForm, AlertForm
 from app.simulator import start_simulation
 from pymongo import MongoClient
 import os
+import certifi
 from datetime import datetime
 import json
 import time
@@ -21,7 +22,7 @@ def get_collections(machine_id):
 def get_db():
     """Get database connection"""
     if 'db' not in g:
-        g.db = MongoClient(os.getenv('MONGO_URI'))
+        g.db = MongoClient(os.getenv('MONGO_URI'), tlsCAFile=certifi.where())
     return g.db
 
 @app.teardown_appcontext
