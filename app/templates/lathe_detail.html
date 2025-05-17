@@ -5,11 +5,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='lathe.css') }}">
 </head>
 <body>
+    {% include 'navbar.html' %}
     <div class="control-panel">
         <h2>Lathe {{ machine_id }} Controls</h2>
         
         <div class="button-group">
-            <a href="{{ url_for('start_simulator', machine_id=machine_id) }}" class="btn">Start Simulator</a>
+            {% if current_user.userType == 'operator' and not under_maintenance %}
+                <a href="{{ url_for('start_simulator', machine_id=machine_id) }}" class="btn">Start Simulator</a>
+            {% endif %}
+            {% if current_user.userType == 'manager' %}
+                <a href="{{ url_for('schedule_maintenance', machine_id=machine_id) }}" class="btn">Schedule Maintenance</a>
+            {% endif %}
             <a href="{{ url_for('job_history', machine_id=machine_id) }}" class="btn">Job History</a>
             <a href="{{ url_for('alert_history', machine_id=machine_id) }}" class="btn">Alert History</a>
          <a href="{{ url_for('add_alert', machine_id=machine_id) }}" 
@@ -23,7 +29,9 @@
         <!-- Current Status Display -->
         <div class="status-overview">
             <h3>Current Status</h3>
-            {% if current_job %}
+            {% if under_maintenance %}
+                <p><strong>Status:</strong> <span class="status-badge maintenance">Under Maintenance</span></p>
+            {% elif current_job %}
                 <p><strong>Job ID:</strong> {{ current_job.jobId }}</p>
                 <p><strong>Job Type:</strong> {{ current_job.jobType }}</p>
                 <p><strong>Description:</strong> {{ current_job.jobDescription }}</p>

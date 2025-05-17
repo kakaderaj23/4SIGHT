@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workshop Analytics | Digital Twin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #ffffff;
+            color: #222;
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .analytics-container {
+            padding: 40px 60px;
+        }
+
+        .analytics-container h2 {
+            font-size: 28px;
+            margin-bottom: 40px;
+        }
+
+        .analytics-container h3 {
+            margin-top: 60px;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .card-row {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-bottom: 50px;
+        }
+
+        .data-card {
+            background-color: #f5f5f5;
+            border-radius: 12px;
+            padding: 24px 32px;
+            flex: 1;
+            min-width: 220px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .data-card h4 {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .data-card h2 {
+            font-size: 24px;
+            color: #1f4037;
+            margin: 0;
+        }
+
+        canvas {
+            width: 100% !important;
+            max-width: 100%;
+        }
+
+        .chart-section {
+            margin-bottom: 80px;
+        }
+    </style>
+</head>
+<body style="background: white !important;">
+    {% include 'navbar.html' %}
+
+    <div class="analytics-container">
+        <h2>Workshop Analytics Dashboard</h2>
+
+        <!-- Summary Cards -->
+        <div class="card-row">
+            <div class="data-card">
+                <h4>Total Jobs</h4>
+                <h2>{{ total_jobs }}</h2>
+            </div>
+            <div class="data-card">
+                <h4>Active Jobs</h4>
+                <h2>{{ active_jobs }}</h2>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-section">
+            <h3>Jobs per Lathe</h3>
+            <canvas id="jobsChart" height="120"></canvas>
+        </div>
+
+        <div class="chart-section">
+            <h3>Average RPM per Lathe</h3>
+            <canvas id="rpmChart" height="120"></canvas>
+        </div>
+
+        <div class="chart-section">
+            <h3>Average Temperature per Lathe (°C)</h3>
+            <canvas id="tempChart" height="120"></canvas>
+        </div>
+
+        <div class="chart-section">
+            <h3>Average Power per Lathe (kW)</h3>
+            <canvas id="powerChart" height="120"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const labels = Array.from({length: 20}, (_, i) => 'Lathe ' + (i + 1));
+
+        function createChart(ctxId, label, data, color, type = 'bar') {
+            new Chart(document.getElementById(ctxId), {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: color,
+                        borderColor: color,
+                        fill: false,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: "#333"
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: "#333" },
+                            grid: { color: "#eee" }
+                        },
+                        y: {
+                            ticks: { color: "#333" },
+                            grid: { color: "#eee" }
+                        }
+                    }
+                }
+            });
+        }
+
+        createChart('jobsChart', 'Jobs', {{ lathe_jobs | safe }}, '#1f77b4');
+        createChart('rpmChart', 'Average RPM', {{ lathe_rpm | safe }}, '#2ca02c', 'line');
+        createChart('tempChart', 'Avg Temp (°C)', {{ lathe_temp | safe }}, '#ff7f0e');
+        createChart('powerChart', 'Avg Power (kW)', {{ lathe_power | safe }}, '#d62728');
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manager Panel | Digital Twin System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="manager-container">
+        <img src="{{ url_for('static', filename='lathe-icon.png') }}" alt="Lathe Icon">
+        <h2>Welcome, Manager</h2>
+        <a href="{{ url_for('dashboard') }}"><button>Lathe Machine Dashboard</button></a>
+        <a href="{{ url_for('analytics_dashboard') }}"><button>Workshop Analytics</button></a>
+    </div>
+</body>
+</html>

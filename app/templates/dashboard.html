@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
 </head>
 <body>
+    {% include 'navbar.html' %}
     <h1 style="text-align:center;">Lathe Machines Dashboard</h1>
 
     <div class="dashboard-summary">
@@ -16,9 +17,13 @@
     <div class="lathe-grid">
         {% for lathe in lathe_statuses %}
             <a href="{{ url_for('lathe_detail', machine_id=lathe.id) }}">
-                <button class="lathe-btn">
+                <button class="lathe-btn {% if lathe.under_maintenance %}disabled{% endif %}">
                     {{ lathe.id }}
-                    <span class="status-dot {% if lathe.is_on %}on{% else %}off{% endif %}"></span>
+                    <span class="status-dot
+                        {% if lathe.under_maintenance %}maintenance
+                        {% elif lathe.is_on %}on
+                        {% else %}off{% endif %}">
+                    </span>
                 </button>
             </a>
         {% endfor %}

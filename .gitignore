@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.py[cod]
+*.so
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# dotenv
+.env
+
+# Compiled cache
+*.pyo
